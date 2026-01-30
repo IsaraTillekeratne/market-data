@@ -7,9 +7,11 @@ import (
 
 func main() {
 
+	orderBookManager := orderbook.NewManager()
 	binanceExchange := binance.New()
-	go orderbook.Run(binanceExchange, "BNBUSDT")
-	go orderbook.Run(binanceExchange, "ETHUSDT")
+
+	go orderbook.Run(orderBookManager, binanceExchange, "BNBUSDT")
+	go orderbook.Run(orderBookManager, binanceExchange, "ETHUSDT")
 
 	select {}
 }

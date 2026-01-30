@@ -7,9 +7,15 @@ import (
 	"github.com/binance/binance-connector-go/clients/spot/src/websocketstreams/models"
 )
 
+type Identifier struct {
+	Exchange string
+	Symbol   string
+}
+
 type OrderBook struct {
 	Bids map[string]string
 	Asks map[string]string
+	Identifier
 }
 
 func (orderBook *OrderBook) ApplyBufferedEvents(buffer []models.DiffBookDepthResponse, localUpdateID int64) (int64, bool) {

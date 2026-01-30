@@ -12,7 +12,7 @@ import (
 	"github.com/market-data/internal/exchange"
 )
 
-func Run(exchange exchange.Exchange, symbol string) {
+func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string) {
 	bufferMgr := buffer.NewBufferManager()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -108,10 +108,14 @@ func Run(exchange exchange.Exchange, symbol string) {
 		}
 
 		// Step 6: Set local order book to snapshot
-		orderBook := OrderBook{
-			Bids: snapshot.Bids,
-			Asks: snapshot.Asks,
+		orderBook := &OrderBook{
+			Bids:       snapshot.Bids,
+			Asks:       snapshot.Asks,
+			Identifier: Identifier{exchange.Name(), strings.ToUpper(symbol)},
 		}
+
+		orderBookManager.Set(orderBook)
+
 		localUpdateID := *snapshotLastID
 
 		// Step 7: Apply buffered events sequentially
@@ -130,6 +134,13 @@ func Run(exchange exchange.Exchange, symbol string) {
 			symbol,
 			len(orderBook.Bids),
 			len(orderBook.Asks),
+		)
+
+		log.Printf(
+			"Exchange: %v Symbol: %v Current Order Books Length: %v",
+			exchange.Name(),
+			symbol,
+			len(orderBookManager.OrderBooks),
 		)
 
 		time.Sleep(1 * time.Second)
