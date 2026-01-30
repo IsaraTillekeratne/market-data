@@ -3,12 +3,11 @@ package binance
 import (
 	"context"
 
-	client "github.com/binance/binance-connector-go/clients/spot"
 	"github.com/market-data/internal/snapshot"
 )
 
-func GetDepthSnapshot(client *client.BinanceSpotClient, symbol string, limit int32) (snapshot.DepthSnapshot, error) {
-	resp, err := client.RestApi.MarketAPI.Depth(context.Background()).
+func (binance *Binance) GetDepthSnapshot(symbol string, limit int32) (snapshot.DepthSnapshot, error) {
+	resp, err := binance.client.RestApi.MarketAPI.Depth(context.Background()).
 		Symbol(symbol).
 		Limit(limit).
 		Execute()

@@ -4,19 +4,18 @@ import (
 	"context"
 	"log"
 
-	client "github.com/binance/binance-connector-go/clients/spot"
 	"github.com/binance/binance-connector-go/clients/spot/src/websocketstreams/models"
 	"github.com/market-data/internal/buffer"
 )
 
-func BufferEvents(ctx context.Context, wsClient *client.BinanceSpotClient, bufferMgr *buffer.Manager, symbol string) {
-	err := wsClient.WebsocketStreams.Connect()
+func (binance *Binance) BufferEvents(ctx context.Context, bufferMgr *buffer.Manager, symbol string) {
+	err := binance.client.WebsocketStreams.Connect()
 	if err != nil {
 		bufferMgr.ErrChan <- err
 		return
 	}
 
-	handler, err := wsClient.WebsocketStreams.WebSocketStreamsAPI.DiffBookDepth().
+	handler, err := binance.client.WebsocketStreams.WebSocketStreamsAPI.DiffBookDepth().
 		Symbol(symbol).
 		Execute()
 	if err != nil {

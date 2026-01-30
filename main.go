@@ -7,6 +7,9 @@ import (
 
 func main() {
 
-	spotClient := binance.NewSpotClient()
-	orderbook.Run(spotClient, "BNBUSDT")
+	binanceExchange := binance.New()
+	go orderbook.Run(binanceExchange, "BNBUSDT")
+	go orderbook.Run(binanceExchange, "ETHUSDT")
+
+	select {}
 }
