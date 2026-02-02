@@ -27,6 +27,6 @@ func (binance *Binance) BufferEvents(ctx context.Context, bufferMgr *buffer.Mana
 		bufferMgr.Append(message)
 	})
 
-	<-ctx.Done()
+	<-ctx.Done() // once signal is received through cancel(), this triggers
 	log.Println("bufferEvents: Context cancelled, shutting down...")
 }

@@ -79,7 +79,7 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string) {
 				bufferFirstUpdateID,
 			)
 
-			cancel()
+			cancel() // signals the go routine to finish
 			wg.Wait()
 
 			bufferMgr.Clear()
