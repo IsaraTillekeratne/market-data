@@ -114,8 +114,6 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string) {
 			Identifier: Identifier{exchange.Name(), strings.ToUpper(symbol)},
 		}
 
-		orderBookManager.Set(orderBook)
-
 		localUpdateID := *snapshotLastID
 
 		// Step 7: Apply buffered events sequentially
@@ -127,6 +125,8 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string) {
 		}
 
 		bufferMgr.RemoveOldEvents(localUpdateID)
+
+		orderBookManager.Set(orderBook)
 
 		log.Printf(
 			"Exchange: %v Symbol: %v Local book synced: %d bids / %d asks.",

@@ -26,10 +26,7 @@ func NewClient(connection *websocket.Conn, hub *Hub) *Client {
 func (c *Client) readLoop() {
 	defer func() {
 		c.hub.Remove(c)
-		err := c.connection.Close()
-		if err != nil {
-			return
-		}
+		_ = c.connection.Close()
 	}()
 
 	for {
@@ -45,10 +42,7 @@ func (c *Client) readLoop() {
 
 func (c *Client) writeLoop() {
 	defer func(connection *websocket.Conn) {
-		err := connection.Close()
-		if err != nil {
-			return
-		}
+		_ = connection.Close()
 	}(c.connection)
 
 	for msg := range c.send {
