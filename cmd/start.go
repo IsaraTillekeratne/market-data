@@ -32,7 +32,13 @@ func init() {
 	startCmd.Flags().StringSliceVar(
 		&symbols,
 		"symbols",
-		[]string{string(constants.BNBUSDT), string(constants.ETHUSDT)},
+		[]string{
+			string(constants.BNBUSDT),
+			//string(constants.ETHUSDT),
+			string(constants.BTCUSDT),
+			//string(constants.SOLUSDT),
+			//string(constants.XRPUSDT),
+		},
 		"Symbols to track (comma separated)",
 	)
 

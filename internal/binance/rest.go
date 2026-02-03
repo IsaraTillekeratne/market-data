@@ -6,8 +6,8 @@ import (
 	"github.com/market-data/internal/snapshot"
 )
 
-func (binance *Binance) GetDepthSnapshot(symbol string, limit int32) (snapshot.DepthSnapshot, error) {
-	resp, err := binance.client.RestApi.MarketAPI.Depth(context.Background()).
+func (b *Binance) GetDepthSnapshot(symbol string, limit int32) (snapshot.DepthSnapshot, error) {
+	resp, err := b.client.RestApi.MarketAPI.Depth(context.Background()).
 		Symbol(symbol).
 		Limit(limit).
 		Execute()

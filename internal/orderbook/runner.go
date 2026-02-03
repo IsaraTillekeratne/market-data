@@ -12,7 +12,10 @@ import (
 	"github.com/market-data/internal/exchange"
 )
 
-func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string) {
+func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, readyWG *sync.WaitGroup) {
+
+	var isInitiallySynced = false
+
 	bufferMgr := buffer.NewBufferManager()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -136,12 +139,13 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string) {
 			len(orderBook.Asks),
 		)
 
-		log.Printf(
-			"Exchange: %v Symbol: %v Current Order Books Length: %v",
-			exchange.Name(),
-			symbol,
-			len(orderBookManager.OrderBooks),
-		)
+		if !isInitiallySynced {
+			log.Printf("Exchange: %v Symbol: %v is synced and ready for the first time",
+				exchange.Name(),
+				symbol)
+			isInitiallySynced = true
+			readyWG.Done()
+		}
 
 		time.Sleep(1 * time.Second)
 	}
