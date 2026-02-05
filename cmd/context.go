@@ -11,10 +11,3 @@ func initApp(cfg app.Config) *app.App {
 	appInstance = app.New(cfg)
 	return appInstance
 }
-
-func getApp() *app.App {
-	if appInstance == nil {
-		panic("app not initialized; run start first")
-	}
-	return appInstance
-}

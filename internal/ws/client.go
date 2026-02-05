@@ -37,7 +37,13 @@ func (c *Client) readLoop() {
 	for {
 		_, rawMsg, err := c.connection.ReadMessage()
 		if err != nil {
-			log.Println("Read Error:", err)
+			if websocket.IsUnexpectedCloseError(
+				err,
+				websocket.CloseGoingAway,
+				websocket.CloseNormalClosure,
+			) {
+				log.Printf("Client %s unexpected close: %v", c.ID, err)
+			}
 			return
 		}
 
