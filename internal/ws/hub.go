@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/market-data/internal/data"
 	"github.com/market-data/internal/orderbook"
 )
 
@@ -78,25 +79,24 @@ func (h *Hub) Unsubscribe(symbol string, client *Client) {
 	}
 }
 
-func (h *Hub) Publish(ob *orderbook.OrderBook) {
+func (h *Hub) Publish(ev data.DepthUpdate) {
 	h.hubLock.Lock()
 	defer h.hubLock.Unlock()
 
-	symbol := ob.Identifier.Symbol
-	subscribedClients := h.subscriptions[symbol]
+	subscribedClients := h.subscriptions[ev.Symbol]
 
 	msg := map[string]interface{}{
 		"type":   "update",
-		"symbol": symbol,
-		"bids":   ob.Bids,
-		"asks":   ob.Asks,
+		"symbol": ev.Symbol,
+		"bids":   ev.Bids,
+		"asks":   ev.Asks,
 	}
 
-	data, _ := json.Marshal(msg)
+	responseData, _ := json.Marshal(msg)
 
 	for c := range subscribedClients {
 		select {
-		case c.send <- data:
+		case c.send <- responseData:
 		default:
 			// slow client → drop
 		}

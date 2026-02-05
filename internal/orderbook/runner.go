@@ -9,6 +9,7 @@ import (
 
 	"github.com/binance/binance-connector-go/clients/spot/src/websocketstreams/models"
 	"github.com/market-data/internal/buffer"
+	"github.com/market-data/internal/data"
 	"github.com/market-data/internal/exchange"
 )
 
@@ -20,17 +21,25 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	updates := make(chan data.DepthUpdate, 1000)
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		exchange.BufferEvents(ctx, bufferMgr, strings.ToLower(symbol))
+		exchange.BufferEvents(ctx, bufferMgr, strings.ToLower(symbol), updates)
 	}()
 
 	go func() {
 		if err := <-bufferMgr.ErrChan; err != nil {
 			log.Printf("Exchange: %v Symbol: %v Message: bufferEvents error: %v", exchange.Name(), symbol, err)
+		}
+	}()
+
+	go func() {
+		for ev := range updates {
+			publisher.Publish(ev)
 		}
 	}()
 
@@ -90,7 +99,7 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				exchange.BufferEvents(ctx, bufferMgr, strings.ToLower(symbol))
+				exchange.BufferEvents(ctx, bufferMgr, strings.ToLower(symbol), updates)
 			}()
 
 			bufferReady := false
@@ -130,7 +139,6 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 		bufferMgr.RemoveOldEvents(localUpdateID)
 
 		orderBookManager.Set(orderBook)
-		publisher.Publish(orderBook)
 
 		log.Printf(
 			"Exchange: %v Symbol: %v Local book synced: %d bids / %d asks.",

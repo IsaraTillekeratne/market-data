@@ -58,6 +58,7 @@ func (c *Client) readLoop() {
 		switch msg.Type {
 		case "subscribe":
 			c.hub.Subscribe(msg.Symbol, c)
+			c.sendSnapshot(msg.Symbol)
 		case "unsubscribe":
 			c.hub.Unsubscribe(msg.Symbol, c)
 		case "snapshot":

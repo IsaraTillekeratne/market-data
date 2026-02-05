@@ -1,5 +1,7 @@
 package orderbook
 
+import "github.com/market-data/internal/data"
+
 type Publisher interface {
-	Publish(ob *OrderBook)
+	Publish(ev data.DepthUpdate)
 }
