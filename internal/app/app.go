@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/market-data/internal/binance"
 	"github.com/market-data/internal/constants"
+	"github.com/market-data/internal/exchange/binance"
 	"github.com/market-data/internal/orderbook"
 	"github.com/market-data/internal/ws"
 )
