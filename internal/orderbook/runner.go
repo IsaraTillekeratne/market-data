@@ -12,7 +12,7 @@ import (
 	"github.com/market-data/internal/exchange"
 )
 
-func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, readyWG *sync.WaitGroup) {
+func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, publisher Publisher, readyWG *sync.WaitGroup) {
 
 	var isInitiallySynced = false
 
@@ -130,6 +130,7 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, r
 		bufferMgr.RemoveOldEvents(localUpdateID)
 
 		orderBookManager.Set(orderBook)
+		publisher.Publish(orderBook)
 
 		log.Printf(
 			"Exchange: %v Symbol: %v Local book synced: %d bids / %d asks.",
