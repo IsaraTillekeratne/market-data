@@ -19,6 +19,7 @@ type level struct {
 	qty   string
 }
 
+// Example usage: orderbook show --symbol BNBUSDT --limit 3
 var orderBookCmd = &cobra.Command{
 	Use:   "orderbook",
 	Short: "Order book operations",
