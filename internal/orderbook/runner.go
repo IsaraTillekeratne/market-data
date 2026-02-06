@@ -16,7 +16,8 @@ import (
 type systemState int
 
 const (
-	stateDisconnected systemState = iota
+	stateInitial systemState = iota
+	stateDisconnected
 	stateResyncing
 	stateLive
 )
@@ -24,7 +25,7 @@ const (
 func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, publisher Publisher, readyWG *sync.WaitGroup) {
 
 	// State handling logic
-	state := stateDisconnected // initially set to Disconnected
+	state := stateInitial
 
 	var isInitiallySynced = false
 
@@ -58,8 +59,30 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 	for {
 		time.Sleep(3 * time.Second)
 
+		// Reconnection Logic in case a Disconnection is detected
+		// To Do: Try to make the Reconnection logic centralized for all symbols
 		if state == stateDisconnected {
+			err := exchange.Start()
+			if err != nil {
+				continue
+			}
 			setState(&state, stateResyncing, symbol, publisher)
+			reSync(&wg, bufferMgr, exchange, symbol, updates, &ctx, &cancel)
+
+			bufferReady := false
+			for i := 0; i < 10; i++ {
+				time.Sleep(1 * time.Second)
+				if !bufferMgr.IsEmpty() {
+					bufferReady = true
+					break
+				}
+			}
+
+			if !bufferReady {
+				log.Printf("Exchange: %v Symbol: %v WARNING: New buffer still empty; retrying...", exchange.Name(), symbol)
+				continue
+			}
+
 		}
 
 		if bufferMgr.IsEmpty() {
@@ -109,16 +132,7 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 
 			setState(&state, stateResyncing, symbol, publisher)
 
-			cancel() // signals the go routine to finish
-			wg.Wait()
-
-			bufferMgr.Clear()
-			ctx, cancel = context.WithCancel(context.Background())
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				exchange.BufferEvents(ctx, bufferMgr, strings.ToLower(symbol), updates)
-			}()
+			reSync(&wg, bufferMgr, exchange, symbol, updates, &ctx, &cancel)
 
 			bufferReady := false
 			for i := 0; i < 10; i++ {
@@ -192,5 +206,20 @@ func setState(currentState *systemState, newState systemState, symbol string, pu
 		publisher.PublishSystem(symbol, "RESYNC")
 	case stateLive:
 		publisher.PublishSystem(symbol, "LIVE")
+	default:
 	}
+}
+
+func reSync(wg *sync.WaitGroup, bufferMgr *buffer.Manager, exchange exchange.Exchange, symbol string,
+	updates chan data.DepthUpdate, ctx *context.Context, cancel *context.CancelFunc) {
+	(*cancel)()
+	wg.Wait()
+
+	bufferMgr.Clear()
+	*ctx, *cancel = context.WithCancel(context.Background())
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		exchange.BufferEvents(*ctx, bufferMgr, strings.ToLower(symbol), updates)
+	}()
 }
