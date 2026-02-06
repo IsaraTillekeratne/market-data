@@ -26,7 +26,7 @@ func (b *Binance) Start() error {
 	return b.client.WebsocketStreams.Connect()
 }
 
-func (b *Binance) SubscribeDepth(ctx context.Context, symbol string, out chan models.DiffBookDepthResponse) error {
+func (b *Binance) SubscribeDepth(ctx context.Context, symbol string, out chan models.DiffBookDepthResponse, errCh chan<- error) error {
 	handler, err := b.client.WebsocketStreams.WebSocketStreamsAPI.
 		DiffBookDepth().
 		Symbol(symbol).
@@ -40,6 +40,13 @@ func (b *Binance) SubscribeDepth(ctx context.Context, symbol string, out chan mo
 		case <-ctx.Done():
 			return
 		case out <- msg:
+		}
+	})
+
+	handler.OnError(func(err error) {
+		select {
+		case errCh <- err:
+		default:
 		}
 	})
 

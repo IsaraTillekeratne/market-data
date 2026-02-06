@@ -43,7 +43,7 @@ func (b *Binance) BufferEvents(
 ) {
 	ch := make(chan models.DiffBookDepthResponse, 1000)
 
-	if err := b.SubscribeDepth(ctx, symbol, ch); err != nil {
+	if err := b.SubscribeDepth(ctx, symbol, ch, bufferMgr.ErrChan); err != nil {
 		bufferMgr.ErrChan <- err
 		return
 	}
