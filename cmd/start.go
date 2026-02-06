@@ -13,6 +13,7 @@ var (
 	port    string
 )
 
+// Example usage: start --symbols BNBUSDT,BTCUSDT --port 8080
 var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the market data service",
@@ -35,8 +36,8 @@ func init() {
 		[]string{
 			string(constants.BNBUSDT),
 			//string(constants.ETHUSDT),
-			string(constants.BTCUSDT),
-			//string(constants.SOLUSDT),
+			//string(constants.BTCUSDT),
+			string(constants.SOLUSDT),
 			//string(constants.XRPUSDT),
 		},
 		"Symbols to track (comma separated)",

@@ -40,20 +40,7 @@ func (h *Hub) Remove(c *Client) {
 	}
 
 	delete(h.clients, c)
-}
-
-func (h *Hub) Broadcast(msg []byte) {
-	h.hubLock.Lock()
-	defer h.hubLock.Unlock()
-
-	for c := range h.clients {
-		select {
-		case c.send <- msg:
-		default:
-			delete(h.clients, c)
-			close(c.send)
-		}
-	}
+	close(c.send)
 }
 
 func (h *Hub) Subscribe(symbol string, client *Client) {
@@ -90,6 +77,29 @@ func (h *Hub) Publish(ev data.DepthUpdate) {
 		"symbol": ev.Symbol,
 		"bids":   ev.Bids,
 		"asks":   ev.Asks,
+	}
+
+	responseData, _ := json.Marshal(msg)
+
+	for c := range subscribedClients {
+		select {
+		case c.send <- responseData:
+		default:
+			// slow client → drop
+		}
+	}
+}
+
+func (h *Hub) PublishSystem(symbol, state string) {
+	h.hubLock.Lock()
+	defer h.hubLock.Unlock()
+
+	subscribedClients := h.subscriptions[symbol]
+
+	msg := map[string]interface{}{
+		"type":   "system",
+		"symbol": symbol,
+		"state":  state,
 	}
 
 	responseData, _ := json.Marshal(msg)

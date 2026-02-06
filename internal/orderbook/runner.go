@@ -13,7 +13,18 @@ import (
 	"github.com/market-data/internal/exchange"
 )
 
+type systemState int
+
+const (
+	stateDisconnected systemState = iota
+	stateResyncing
+	stateLive
+)
+
 func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, publisher Publisher, readyWG *sync.WaitGroup) {
+
+	// State handling logic
+	state := stateDisconnected // initially set to Disconnected
 
 	var isInitiallySynced = false
 
@@ -34,6 +45,7 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 	go func() {
 		if err := <-bufferMgr.ErrChan; err != nil {
 			log.Printf("Exchange: %v Symbol: %v Message: bufferEvents error: %v", exchange.Name(), symbol, err)
+			setState(&state, stateDisconnected, symbol, publisher)
 		}
 	}()
 
@@ -45,6 +57,10 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 
 	for {
 		time.Sleep(3 * time.Second)
+
+		if state == stateDisconnected {
+			setState(&state, stateResyncing, symbol, publisher)
+		}
 
 		if bufferMgr.IsEmpty() {
 			log.Printf("Exchange: %v Symbol: %v WARNING: No depth updates received yet, skipping this cycle.\n", exchange.Name(), symbol)
@@ -90,6 +106,8 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 				snapshotLastID,
 				bufferFirstUpdateID,
 			)
+
+			setState(&state, stateResyncing, symbol, publisher)
 
 			cancel() // signals the go routine to finish
 			wg.Wait()
@@ -139,6 +157,7 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 		bufferMgr.RemoveOldEvents(localUpdateID)
 
 		orderBookManager.Set(orderBook)
+		setState(&state, stateLive, symbol, publisher)
 
 		log.Printf(
 			"Exchange: %v Symbol: %v Local book synced: %d bids / %d asks.",
@@ -157,5 +176,21 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 		}
 
 		time.Sleep(1 * time.Second)
+	}
+}
+
+func setState(currentState *systemState, newState systemState, symbol string, publisher Publisher) {
+	if *currentState == newState {
+		return
+	}
+	*currentState = newState
+
+	switch newState {
+	case stateDisconnected:
+		publisher.PublishSystem(symbol, "DISCONNECTED")
+	case stateResyncing:
+		publisher.PublishSystem(symbol, "RESYNC")
+	case stateLive:
+		publisher.PublishSystem(symbol, "LIVE")
 	}
 }
