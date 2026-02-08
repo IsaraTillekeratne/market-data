@@ -16,15 +16,15 @@ import (
 type systemState int
 
 const (
-	stateDisconnected systemState = iota
+	stateInitial systemState = iota
+	stateDisconnected
 	stateResyncing
 	stateLive
 )
 
 func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, publisher Publisher, readyWG *sync.WaitGroup) {
 
-	// State handling logic
-	state := stateDisconnected // initially set to Disconnected
+	state := stateInitial
 
 	var isInitiallySynced = false
 
@@ -157,7 +157,9 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 		bufferMgr.RemoveOldEvents(localUpdateID)
 
 		orderBookManager.Set(orderBook)
-		setState(&state, stateLive, symbol, publisher)
+		if state != stateDisconnected { // to prevent state change from Disconnected -> Live
+			setState(&state, stateLive, symbol, publisher)
+		}
 
 		log.Printf(
 			"Exchange: %v Symbol: %v Local book synced: %d bids / %d asks.",
@@ -192,5 +194,6 @@ func setState(currentState *systemState, newState systemState, symbol string, pu
 		publisher.PublishSystem(symbol, "RESYNC")
 	case stateLive:
 		publisher.PublishSystem(symbol, "LIVE")
+	default:
 	}
 }
