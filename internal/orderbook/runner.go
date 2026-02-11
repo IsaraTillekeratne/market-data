@@ -18,7 +18,7 @@ type systemState int
 const (
 	stateInitial systemState = iota
 	stateDisconnected
-	stateResyncing
+	stateResynced
 	stateLive
 )
 
@@ -45,7 +45,6 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 	go func() {
 		if err := <-bufferMgr.ErrChan; err != nil {
 			log.Printf("Exchange: %v Symbol: %v Message: bufferEvents error: %v", exchange.Name(), symbol, err)
-			setState(&state, stateDisconnected, symbol, publisher)
 		}
 	}()
 
@@ -55,11 +54,51 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 		}
 	}()
 
+	// handle disconnection
+	go func() {
+
+		for {
+
+			disconnectedChan := exchange.GetDisconnectedChan()
+			connectedChan := exchange.GetConnectedChan()
+
+			<-disconnectedChan
+			setState(&state, stateDisconnected, symbol, publisher)
+
+			<-connectedChan
+
+			// start the resyncing process
+			cancel() // clears up old handlers
+			wg.Wait()
+
+			bufferMgr.Clear()
+			ctx, cancel = context.WithCancel(context.Background())
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				exchange.BufferEvents(ctx, bufferMgr, strings.ToLower(symbol), updates)
+			}()
+
+			bufferReady := false
+			for i := 0; i < 10; i++ {
+				time.Sleep(1 * time.Second)
+				if !bufferMgr.IsEmpty() {
+					bufferReady = true
+					break
+				}
+			}
+
+			log.Printf("Resynced after Disconnection. Buffer Ready:%v\n", bufferReady)
+			setState(&state, stateResynced, symbol, publisher)
+		}
+	}()
+
 	for {
 		time.Sleep(3 * time.Second)
 
 		if state == stateDisconnected {
-			setState(&state, stateResyncing, symbol, publisher)
+			log.Printf("Exchange: %v Symbol: %v WARNING: Websocket is disconnected, skipping this cycle.\n", exchange.Name(), symbol)
+			continue
 		}
 
 		if bufferMgr.IsEmpty() {
@@ -107,7 +146,7 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 				bufferFirstUpdateID,
 			)
 
-			setState(&state, stateResyncing, symbol, publisher)
+			// start the resyncing process
 
 			cancel() // signals the go routine to finish
 			wg.Wait()
@@ -128,6 +167,8 @@ func Run(orderBookManager *Manager, exchange exchange.Exchange, symbol string, p
 					break
 				}
 			}
+
+			setState(&state, stateResynced, symbol, publisher)
 
 			if !bufferReady {
 				log.Printf("Exchange: %v Symbol: %v WARNING: New buffer still empty; retrying...", exchange.Name(), symbol)
@@ -190,8 +231,8 @@ func setState(currentState *systemState, newState systemState, symbol string, pu
 	switch newState {
 	case stateDisconnected:
 		publisher.PublishSystem(symbol, "DISCONNECTED")
-	case stateResyncing:
-		publisher.PublishSystem(symbol, "RESYNC")
+	case stateResynced:
+		publisher.PublishSystem(symbol, "RESYNCED")
 	case stateLive:
 		publisher.PublishSystem(symbol, "LIVE")
 	default:

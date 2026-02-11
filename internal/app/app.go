@@ -27,10 +27,9 @@ func (a *App) Start() error {
 
 	log.Printf("Exchange: %s is being set up...\n", constants.ExchangeBinance)
 	binanceExchange := binance.New()
-	err := binanceExchange.Start()
-	if err != nil {
-		return err
-	}
+
+	go binanceExchange.Start()
+	<-binanceExchange.ConnectedChan // waits until the connection is initially successful
 
 	hub := ws.NewHub(a.OrderBookManager, binanceExchange.Name())
 	var wg sync.WaitGroup
@@ -49,7 +48,7 @@ func (a *App) Start() error {
 
 	addr := ":" + a.config.Port
 	log.Printf("WebSocket server running on %s\n", addr)
-	err = http.ListenAndServe(addr, handler)
+	err := http.ListenAndServe(addr, handler)
 	if err != nil {
 		return err
 	}
